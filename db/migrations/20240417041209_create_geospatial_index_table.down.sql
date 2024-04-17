@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS geospatial_index
