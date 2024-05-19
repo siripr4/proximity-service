@@ -82,9 +82,45 @@ func (queries *PSQLBusinessQueries) addBusiness(ctx context.Context, business da
 	}
 }
 
-func (queries *PSQLBusinessQueries) updateBusiness(ctx context.Context, business datastore.Business) error {
-	// TODO
-	return nil
+func (queries *PSQLBusinessQueries) updateBusiness(ctx context.Context, business datastore.UpdateBusiness) (*datastore.Business, error) {
+	updatesMap := getUpdatesMap(business)
+	updateBuilder := psql.Update(BUSINESS_TABLE).Where(squirrel.Eq{ID_COLUMN: business.Id})
+	for column, value := range updatesMap {
+		if value != nil {
+			updateBuilder.Set(column, value)
+		}
+	}
+
+	query, args, err := updateBuilder.
+		Suffix("RETURNING *").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+	row, err := queries.db.QueryContext(ctx, query, args)
+	if err != nil {
+		return nil, err
+	} else {
+		var business datastore.Business
+		if row.Next() {
+			err := row.Scan(&business.Id,
+				&business.Name,
+				&business.Address,
+				&business.City,
+				&business.State,
+				&business.Country,
+				&business.Latitude,
+				&business.Longitude)
+			if err != nil {
+				return nil, err
+			}
+			return &business, nil
+		} else if err := row.Err(); err != nil {
+			return nil, err
+		} else {
+			return nil, errors.New("no matching row found")
+		}
+	}
 }
 
 func (queries *PSQLBusinessQueries) deleteBusiness(ctx context.Context, id int) error {
@@ -102,4 +138,16 @@ func (queries *PSQLBusinessQueries) deleteBusiness(ctx context.Context, id int) 
 		return errors.New(fmt.Sprintf("no matching rows found for id: %d", id))
 	}
 	return nil
+}
+
+func getUpdatesMap(updateBusiness datastore.UpdateBusiness) map[string]interface{} {
+	updatesMap := make(map[string]interface{})
+	updatesMap[NAME_COLUMN] = updateBusiness.Name
+	updatesMap[ADDRESS_COLUMN] = updateBusiness.Address
+	updatesMap[CITY_COLUMN] = updateBusiness.City
+	updatesMap[STATE_COLUMN] = updateBusiness.State
+	updatesMap[COUNTRY_COLUMN] = updateBusiness.Country
+	updatesMap[LATITUDE_COLUMN] = updateBusiness.Latitude
+	updatesMap[LONGITUDE_COLUMN] = updateBusiness.Longitude
+	return updatesMap
 }
