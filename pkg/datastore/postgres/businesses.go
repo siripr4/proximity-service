@@ -30,8 +30,8 @@ const (
 
 func (queries *PSQLBusinessQueries) getBusinessById(ctx context.Context, id int) (*datastore.Business, error) {
 	sql, args, err := psql.Select(ID_COLUMN, NAME_COLUMN, ADDRESS_COLUMN, CITY_COLUMN, STATE_COLUMN, COUNTRY_COLUMN, LATITUDE_COLUMN, LONGITUDE_COLUMN).
-		From("businesses").
-		Where(squirrel.Eq{"id": id}).
+		From(BUSINESS_TABLE).
+		Where(squirrel.Eq{ID_COLUMN: id}).
 		ToSql()
 	if err != nil {
 		return nil, err
